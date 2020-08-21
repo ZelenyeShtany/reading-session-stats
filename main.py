@@ -2,21 +2,32 @@ import popplerqt5
 import sys
 import PyQt5
 import re
+import csv
+from datetime import date
+import locale
+
+
+def export_to_csv(counter,pdffilename,booktitle,time):
+     with open('/home/zelenyeshtany/r.csv', 'w', newline='') as csvfile:
+         today = date.today()
+         spamwriter = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
+         spamwriter.writerow(today.strftime('%Y-%m-%d'), counter,time, booktitle, pdffilename,)
+#         spamwriter.writerow(['Spam', 'Lovely Spam', 'Wonderful Spam'])
+
 
 # returns TextBox object and its index within TextList
 def getTextboxCoordsByHighlightCoords(page,highlight):
     pwidth = page.pageSize().width()
     pheight = page.pageSize().height()
     page_text = page.textList()
+    textbox = None
     for i in range(len(page_text)):
-        if(int(annot_get_x(highlight,pwidth))-1 <= int(page_textlist[i].boundingBox().x()) <= int(annot_get_x(highlight,pwidth))+1
+        if(int(annot_get_x(highlight,pwidth))-1 <= int(page_text[i].boundingBox().x()) <= int(annot_get_x(highlight,pwidth))+1
            and
-           int(annot_get_y(highlight,pheight))-1 <= int(page_textlist[i].boundingBox().y()) <= int(annot_get_y(highlight,pheight))+1
+           int(annot_get_y(highlight,pheight))-1 <= int(page_text[i].boundingBox().y()) <= int(annot_get_y(highlight,pheight))+1
            ):
-            return [page_textlist[i],i]
-    return None
-        
-
+            textbox = [page_text[i],i]
+    return textbox
 
 def my_annot_get_text(annotation,page):
     quads = annotation.highlightQuads()
@@ -126,7 +137,9 @@ def highlight_amender(all_annots,page_numbers,document):
 def main():
     all_annots = []
     page_numbers = []
-    doc = popplerqt5.Poppler.Document.load("/home/zelenyeshtany/Books/10StepstoEarningAwesomeGrades.pdf")
+    filepath = "/home/zelenyeshtany/Books/10StepstoEarningAwesomeGrades.pdf"
+    filename = filepath.split('/')[-1]
+    doc = popplerqt5.Poppler.Document.load(filepath)
     for i in range(doc.numPages()):
         page = doc.page(i)
         (pwidth, pheight) = (page.pageSize().width(), page.pageSize().height())
@@ -160,11 +173,10 @@ def main():
     if(last_end_page_number - last_start_page_number > 0):
         # подсчет со start до конца страницы, если есть промежуточные страницы
         start_page = doc.page(last_start_page_number)
-
+        start_page_text = start_page.textList()
         start_textbox = getTextboxCoordsByHighlightCoords(start_page,last_start)
         if(start_textbox):
             start_position = start_textbox[1]
-            break
         word_count += (len(start_page_text)-start_position)
         # / подсчет со start до конца страницы, если есть промежуточные страницы
     
@@ -196,6 +208,10 @@ def main():
             end_position = end_textbox[1]
         word_count = end_position - start_position + 1
     print(word_count)
+    print('modifdate:')
+    locale.setlocale(locale.LC_ALL, 'en_US.utf8')
+    print(last_start.modificationDate().toString())
+    export_to_csv(word_count,filename,)
     return word_count
 # / word counter
     
