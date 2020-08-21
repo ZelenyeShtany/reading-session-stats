@@ -140,86 +140,84 @@ def main():
                    ):
                     all_annots.append(annotation)
                     page_numbers.append(i)
-    highlight_amender(all_annots,page_numbers,doc)
-    # print('texts under highlights:')
-#     for i in range(len(all_annots)):
-#         print(my_annot_get_text(all_annots[i],doc.page(page_numbers[i])))
-#     print(' / texts under highlights:')
-#     # word counter
-#     print('all_annots : ' + str(len(all_annots)))
-#     print('page_numbers : ' + str(len(page_numbers)))
-#     word_count = 0
-#     last_start_page_number = page_numbers[len(all_annots)-2]
-#     last_end_page_number = page_numbers[len(all_annots)-1]
-#     last_start = all_annots[len(all_annots)-2]
-#     last_end = all_annots[len(all_annots)-1]
+    print('texts under highlights:')
+    for i in range(len(all_annots)):
+        print(my_annot_get_text(all_annots[i],doc.page(page_numbers[i])))
+    print(' / texts under highlights:')
+    # word counter
+    print('all_annots : ' + str(len(all_annots)))
+    print('page_numbers : ' + str(len(page_numbers)))
+    word_count = 0
+    last_start_page_number = page_numbers[len(all_annots)-2]
+    last_end_page_number = page_numbers[len(all_annots)-1]
+    last_start = all_annots[len(all_annots)-2]
+    last_end = all_annots[len(all_annots)-1]
     
-#     # если есть промежуточные страницы
-#     print('last_end_page_number : '+str(last_end_page_number))
-#     print('last_start_page_number : ' + str(last_start_page_number))
-#     if(last_end_page_number - last_start_page_number > 0):
-#         # подсчет со start до конца страницы, если есть промежуточные страницы
-#         start_page = doc.page(last_start_page_number)
-#         start_page_width = start_page.pageSize().width()
-#         start_page_height = start_page.pageSize().height()
-#         start_page_text = start_page.textList()
-#         #print('X:' + str(int(annot_get_x(last_start,start_page_width))))
-#         #print('Y:' + str(int(annot_get_y(last_start,start_page_height))))
+    # если есть промежуточные страницы
+    print('last_end_page_number : '+str(last_end_page_number))
+    print('last_start_page_number : ' + str(last_start_page_number))
+    if(last_end_page_number - last_start_page_number > 0):
+        # подсчет со start до конца страницы, если есть промежуточные страницы
+        start_page = doc.page(last_start_page_number)
+        start_page_width = start_page.pageSize().width()
+        start_page_height = start_page.pageSize().height()
+        start_page_text = start_page.textList()
+        #print('X:' + str(int(annot_get_x(last_start,start_page_width))))
+        #print('Y:' + str(int(annot_get_y(last_start,start_page_height))))
         
-#         for i in range(len(start_page_text)):
-#             #print(str(int(start_page_text[i].boundingBox().x())))
-#             #print(str(int(start_page_text[i].boundingBox().y())))
-#             if(int(annot_get_x(last_start,start_page_width))-1 <= int(start_page_text[i].boundingBox().x()) <= int(annot_get_x(last_start,start_page_width))+1
-#                and
-#                int(annot_get_y(last_start,start_page_height))-1 <= int(start_page_text[i].boundingBox().y()) <= int(annot_get_y(last_start,start_page_height))+1
-#                ):
-#                 start_position = i
-#                 print('SRABOTALO')
-#                 break
-#         word_count += (len(start_page_text)-start_position)
-#         # / подсчет со start до конца страницы, если есть промежуточные страницы
+        for i in range(len(start_page_text)):
+            #print(str(int(start_page_text[i].boundingBox().x())))
+            #print(str(int(start_page_text[i].boundingBox().y())))
+            if(int(annot_get_x(last_start,start_page_width))-1 <= int(start_page_text[i].boundingBox().x()) <= int(annot_get_x(last_start,start_page_width))+1
+               and
+               int(annot_get_y(last_start,start_page_height))-1 <= int(start_page_text[i].boundingBox().y()) <= int(annot_get_y(last_start,start_page_height))+1
+               ):
+                start_position = i
+                break
+        word_count += (len(start_page_text)-start_position)
+        # / подсчет со start до конца страницы, если есть промежуточные страницы
     
-#         # подсчет слов на всех промежуточных страницах меджду end и start
-#         offset_page = last_start_page_number+1
-#         while(last_end_page_number - offset_page > 0):
-#             word_count+=len(doc.page(offset_page).textList())
-#             offset_page+=1
-#         # / подсчет слов на всех промежуточных страницах меджду end и start
+        # подсчет слов на всех промежуточных страницах меджду end и start
+        offset_page = last_start_page_number+1
+        while(last_end_page_number - offset_page > 0):
+            word_count+=len(doc.page(offset_page).textList())
+            offset_page+=1
+        # / подсчет слов на всех промежуточных страницах меджду end и start
        
-#         # подсчет с начала страницы end до самого end, если есть промежуточные страницы
-#         end_page = doc.page(last_end_page_number)
-#         end_page_width = end_page.pageSize().width()
-#         end_page_height = end_page.pageSize().height()
-#         end_page_text = end_page.textList()
-#         for i in range(len(end_page_text)):
-#             if((int(annot_get_x(last_end,end_page_width))-1 <= int(end_page_text[i].boundingBox().x()) <= int(annot_get_x(last_end,end_page_width))+1
-#                 and
-#                 int(annot_get_y(last_end,end_page_height))-1 <= int(end_page_text[i].boundingBox().y()) <= int(annot_get_y(last_end,end_page_height))+1
-#                 )):
-#                 end_position = i
-#                 word_count += end_position + 1
-#         # / подсчет с начала страницы end до самого end, если есть промежуточные страницы
+        # подсчет с начала страницы end до самого end, если есть промежуточные страницы
+        end_page = doc.page(last_end_page_number)
+        end_page_width = end_page.pageSize().width()
+        end_page_height = end_page.pageSize().height()
+        end_page_text = end_page.textList()
+        for i in range(len(end_page_text)):
+            if((int(annot_get_x(last_end,end_page_width))-1 <= int(end_page_text[i].boundingBox().x()) <= int(annot_get_x(last_end,end_page_width))+1
+                and
+                int(annot_get_y(last_end,end_page_height))-1 <= int(end_page_text[i].boundingBox().y()) <= int(annot_get_y(last_end,end_page_height))+1
+                )):
+                end_position = i
+                word_count += end_position + 1
+        # / подсчет с начала страницы end до самого end, если есть промежуточные страницы
 
-#     # если нет промежуточных страниц
-#     elif(last_end_page_number - last_start_page_number == 0):
-#         page_with_start_and_end = doc.page(last_start_page_number)
-#         (pwidth, pheight) = (page_with_start_and_end.pageSize().width(), page_with_start_and_end.pageSize().height())
-#         page_text = page_with_start_and_end.textList()
-#         for i in range(len(page_text)):
-#             if(int(annot_get_x(last_start,pwidth))-1 <= int(page_text[i].boundingBox().x()) <= int(annot_get_x(last_start,pwidth))+1
-#                and
-#                int(annot_get_y(last_start,pheight))-1 <= int(page_text[i].boundingBox().y()) <= int(annot_get_y(last_start,pheight))+1
-#                ):
-#                 start_position = i
-#             if(int(annot_get_x(last_end,pwidth))-1 <= int(page_text[i].boundingBox().x()) <= int(annot_get_x(last_end,pwidth))+1
-#                and
-#                int(annot_get_y(last_end,pheight))-1 <= int(page_text[i].boundingBox().y()) <= int(annot_get_y(last_end,pheight))+1
-#                ):
-#                 end_position = i
-#         word_count = end_position - start_position + 1
-#     print(word_count)
-#     return word_count
-# # / word counter
+    # если нет промежуточных страниц
+    elif(last_end_page_number - last_start_page_number == 0):
+        page_with_start_and_end = doc.page(last_start_page_number)
+        (pwidth, pheight) = (page_with_start_and_end.pageSize().width(), page_with_start_and_end.pageSize().height())
+        page_text = page_with_start_and_end.textList()
+        for i in range(len(page_text)):
+            if(int(annot_get_x(last_start,pwidth))-1 <= int(page_text[i].boundingBox().x()) <= int(annot_get_x(last_start,pwidth))+1
+               and
+               int(annot_get_y(last_start,pheight))-1 <= int(page_text[i].boundingBox().y()) <= int(annot_get_y(last_start,pheight))+1
+               ):
+                start_position = i
+            if(int(annot_get_x(last_end,pwidth))-1 <= int(page_text[i].boundingBox().x()) <= int(annot_get_x(last_end,pwidth))+1
+               and
+               int(annot_get_y(last_end,pheight))-1 <= int(page_text[i].boundingBox().y()) <= int(annot_get_y(last_end,pheight))+1
+               ):
+                end_position = i
+        word_count = end_position - start_position + 1
+    print(word_count)
+    return word_count
+# / word counter
     
         
 if __name__ == "__main__":
