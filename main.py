@@ -3,15 +3,15 @@ import sys
 import PyQt5
 import re
 import csv
-from datetime import date
+from datetime import datetime,date
 import locale
 
 
-def export_to_csv(counter,pdffilename,booktitle,time):
-     with open('/home/zelenyeshtany/r.csv', 'w', newline='') as csvfile:
+def export_to_csv(amount_of_words,pdffilename,mins):
+     with open('/home/zelenyeshtany/r.csv', 'a', newline='') as csvfile:
          today = date.today()
-         spamwriter = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
-         spamwriter.writerow(today.strftime('%Y-%m-%d'), counter,time, booktitle, pdffilename,)
+         writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL, lineterminator='\n')
+         writer.writerow([today.strftime('%Y-%m-%d'), amount_of_words,int(mins),pdffilename])
 #         spamwriter.writerow(['Spam', 'Lovely Spam', 'Wonderful Spam'])
 
 
@@ -210,8 +210,17 @@ def main():
     print(word_count)
     print('modifdate:')
     locale.setlocale(locale.LC_ALL, 'en_US.utf8')
-    print(last_start.modificationDate().toString())
-    export_to_csv(word_count,filename,)
+    #today.strftime('%Y-%m-%d')
+    print(PyQt5.QtCore.QLocale.system().toString(last_start.modificationDate(),'yyyy-MM-dd HH:mm'))
+    #minus = last_end.modificationDate() - last_start.modificationDate()
+    print(type(last_start.modificationDate()))
+    py_start_datetime = last_start.modificationDate().toPyDateTime()
+    py_end_datetime = last_end.modificationDate().toPyDateTime()
+    diff = py_end_datetime - py_start_datetime
+    diff_mins = diff.total_seconds()/60
+    # raboraet = today,'yyyy-MM-dd HH:mm'
+    #print(last_start.modificationDate().toString())
+    export_to_csv(word_count,filename,diff_mins)
     return word_count
 # / word counter
     
