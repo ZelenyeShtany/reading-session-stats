@@ -1,12 +1,59 @@
+#!/usr/bin/python
 import popplerqt5
 import sys
 import PyQt5
 import re
 import csv
 from datetime import datetime,date
-import locale
 import getopt
 import os
+
+def count_words_between_annotations(annot1,annot2,
+                                    doc,annot1_page_number,
+                                    annot2_page_number):
+    word_count = 0
+        # если есть промежуточные страницы
+    if(annot2_page_number - annot1_page_number > 0):
+        # подсчет со annot1 до конца страницы, если есть промежуточные страницы
+        annot1_page = doc.page(annot1_page_number)
+        annot1_page_text = annot1_page.textList()
+        annot1_textbox = getTextboxCoordsByHighlightCoords(annot1_page,annot1)
+        if(annot1_textbox):
+            annot1_position = annot1_textbox[1]
+        word_count += (len(annot1_page_text)-annot1_position)
+        # / подсчет со annot1 до конца страницы, если есть промежуточные страницы
+    
+        # подсчет слов на всех промежуточных страницах меджду annot2 и annot1
+        offset_page = annot1_page_number+1
+        while(annot2_page_number - offset_page > 0):
+            word_count+=len(doc.page(offset_page).textList())
+            offset_page+=1
+        # / подсчет слов на всех промежуточных страницах меджду annot2 и annot1
+       
+        # подсчет с начала страницы annot2 до самого annot2, если есть промежуточные страницы
+        annot2_page = doc.page(annot2_page_number)
+        annot2_textbox = getTextboxCoordsByHighlightCoords(annot2_page,annot2)
+        if(annot2_textbox):
+            annot2_position = annot2_textbox[1]
+            word_count += annot2_position + 1
+        # / подсчет с начала страницы annot2 до самого annot2, если есть промежуточные страницы
+
+    # если нет промежуточных страниц
+    elif(annot2_page_number - annot1_page_number == 0):
+        page_with_annot1_and_annot2 = doc.page(annot1_page_number)
+
+        annot1_textbox = getTextboxCoordsByHighlightCoords(page_with_annot1_and_annot2,annot1)
+        if(annot1_textbox):
+            annot1_position = annot1_textbox[1]
+
+        annot2_textbox = getTextboxCoordsByHighlightCoords(page_with_annot1_and_annot2,annot2)
+        if(annot2_textbox):
+            annot2_position = annot2_textbox[1]
+        word_count = annot2_position - annot1_position + 1
+    return word_count
+    #print(PyQt5.QtCore.QLocale.system().toString(last_start.modificationDate(),'yyyy-MM-dd HH:mm')) # raboraet = today,'yyyy-MM-dd HH:mm'
+
+
 def export_to_csv(timestamp,amount_of_words,pdffilename,mins):
     csvfilename = '/home/zelenyeshtany/r.csv'
     with open(csvfilename, 'a', newline='') as csvfile:
@@ -16,7 +63,7 @@ def export_to_csv(timestamp,amount_of_words,pdffilename,mins):
     report = ('wrote to file ' + '"' + csvfilename +
               '" :\ntimestamp:\t\t' + str(row[0]) +
               '\namount of words:\t' + str(row[1]) +
-              '\nmins:\t\t\t' + str(row[2]) +
+              '\nminutes spent:\t\t' + str(row[2]) +
               '\nfile:\t\t\t' + str(row[3]))    
     return report
 
@@ -207,54 +254,17 @@ def main(argv):
             print('Add another "start" annotation before last "end" annotation')
     
     # word counter
-    word_count = 0
     last_start_page_number = page_numbers[len(all_annots)-2]
     last_end_page_number = page_numbers[len(all_annots)-1]
     last_start = all_annots[len(all_annots)-2]
     last_end = all_annots[len(all_annots)-1]
-    
-    # если есть промежуточные страницы
-    print('last_end_page_number : '+str(last_end_page_number))
-    print('last_start_page_number : ' + str(last_start_page_number))
-    if(last_end_page_number - last_start_page_number > 0):
-        # подсчет со start до конца страницы, если есть промежуточные страницы
-        start_page = doc.page(last_start_page_number)
-        start_page_text = start_page.textList()
-        start_textbox = getTextboxCoordsByHighlightCoords(start_page,last_start)
-        if(start_textbox):
-            start_position = start_textbox[1]
-        word_count += (len(start_page_text)-start_position)
-        # / подсчет со start до конца страницы, если есть промежуточные страницы
-    
-        # подсчет слов на всех промежуточных страницах меджду end и start
-        offset_page = last_start_page_number+1
-        while(last_end_page_number - offset_page > 0):
-            word_count+=len(doc.page(offset_page).textList())
-            offset_page+=1
-        # / подсчет слов на всех промежуточных страницах меджду end и start
-       
-        # подсчет с начала страницы end до самого end, если есть промежуточные страницы
-        end_page = doc.page(last_end_page_number)
-        end_textbox = getTextboxCoordsByHighlightCoords(end_page,last_end)
-        if(end_textbox):
-            end_position = end_textbox[1]
-            word_count += end_position + 1
-        # / подсчет с начала страницы end до самого end, если есть промежуточные страницы
+    word_count = count_words_between_annotations(last_start,
+                                    last_end,
+                                    doc,
+                                    last_start_page_number,
+                                    last_end_page_number
+                                    )
 
-    # если нет промежуточных страниц
-    elif(last_end_page_number - last_start_page_number == 0):
-        page_with_start_and_end = doc.page(last_start_page_number)
-
-        start_textbox = getTextboxCoordsByHighlightCoords(page_with_start_and_end,last_start)
-        if(start_textbox):
-            start_position = start_textbox[1]
-
-        end_textbox = getTextboxCoordsByHighlightCoords(page_with_start_and_end,last_end)
-        if(end_textbox):
-            end_position = end_textbox[1]
-        word_count = end_position - start_position + 1
-    locale.setlocale(locale.LC_ALL, 'en_US.utf8')
-    #print(PyQt5.QtCore.QLocale.system().toString(last_start.modificationDate(),'yyyy-MM-dd HH:mm')) # raboraet = today,'yyyy-MM-dd HH:mm'
 
     if(diff_mins == 0):
         py_start_datetime = last_start.modificationDate().toPyDateTime()
