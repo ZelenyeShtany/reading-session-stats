@@ -5,14 +5,20 @@ import re
 import csv
 from datetime import datetime,date
 import locale
-
-
-def export_to_csv(amount_of_words,pdffilename,mins):
-     with open('/home/zelenyeshtany/r.csv', 'a', newline='') as csvfile:
-         today = datetime.today()
-         writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL, lineterminator='\n')
-         writer.writerow([today.strftime('%Y-%m-%d %H:%M'), amount_of_words,int(mins),pdffilename])
-
+import getopt
+import os
+def export_to_csv(timestamp,amount_of_words,pdffilename,mins):
+    csvfilename = '/home/zelenyeshtany/r.csv'
+    with open(csvfilename, 'a', newline='') as csvfile:
+        writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL, lineterminator='\n')
+        row = [timestamp.strftime('%Y-%m-%d %H:%M'), amount_of_words,int(mins),pdffilename]
+        writer.writerow(row)
+    report = ('wrote to file ' + '"' + csvfilename +
+              '" :\ntimestamp:\t\t' + str(row[0]) +
+              '\namount of words:\t' + str(row[1]) +
+              '\nmins:\t\t\t' + str(row[2]) +
+              '\nfile:\t\t\t' + str(row[3]))    
+    return report
 
 # returns TextBox object and its index within TextList
 def getTextboxCoordsByHighlightCoords(page,highlight):
@@ -133,12 +139,42 @@ def highlight_amender(all_annots,page_numbers,document):
     converter.convert()    
     
 
-def main():
-    all_annots = []
-    page_numbers = []
-    filepath = "/home/zelenyeshtany/Books/10StepstoEarningAwesomeGrades.pdf"
+def main(argv):
+    all_annots = [] # all 'start' and 'end' annotations (which contents is either 'start' or 'end')
+    page_numbers = [] # all_annots[5] returns HighlightAnnotation object and page_numbers[5] returns number of page in which this annotations resides
+    
+# params
+    diff_mins = 0 # amount of time spent to reading
+    timestamp = None # time when you was reading
+    filepath = None # path to pdf file
+    try:
+        opts, args = getopt.getopt(argv,"hf:m:t:",["filepath","help","mins=","timestamp="])
+    except getopt.GetoptError:
+        print('test.py -i <inputfile> -o <outputfile>')
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt in ("-h","--help"):
+            print('usage: ' + os.path.basename(__file__)+' [OPTIONS]')
+            print('OPTIONS:')
+            print('-f, --filepath\tpath to pdf file to open')
+            print('-h, --help\treturns help info')
+            print('-m, --mins\tspecifies amount of time spent to reading (in minutes).')
+            print('\t\tDefault: last_start_annot.lastModifiedTime() - last_end_annot.lastModifiedTime()')
+            print('-t, --timestamp\tSpecifies time when you was reading')
+            sys.exit()
+        elif opt in ("-t", "--timestamp"):
+            timestamp = arg
+        elif opt in ("-m", "--mins"):
+            diff_mins = arg
+        elif opt in ("-f", "--filepath"):
+            filepath = arg
+
+    if(filepath is None):
+        filepath = "/home/zelenyeshtany/Books/10StepstoEarningAwesomeGrades.pdf"
     filename = filepath.split('/')[-1]
 
+#/params
+    
     doc = popplerqt5.Poppler.Document.load(filepath)
     if(doc is None):
          print('Document not found')
@@ -217,20 +253,22 @@ def main():
         if(end_textbox):
             end_position = end_textbox[1]
         word_count = end_position - start_position + 1
-    print(word_count)
-    print('modifdate:')
     locale.setlocale(locale.LC_ALL, 'en_US.utf8')
-    print(PyQt5.QtCore.QLocale.system().toString(last_start.modificationDate(),'yyyy-MM-dd HH:mm')) # raboraet = today,'yyyy-MM-dd HH:mm'
-    print(type(last_start.modificationDate()))
-    py_start_datetime = last_start.modificationDate().toPyDateTime()
-    py_end_datetime = last_end.modificationDate().toPyDateTime()
-    diff = py_end_datetime - py_start_datetime
-    diff_mins = diff.total_seconds()/60
+    #print(PyQt5.QtCore.QLocale.system().toString(last_start.modificationDate(),'yyyy-MM-dd HH:mm')) # raboraet = today,'yyyy-MM-dd HH:mm'
+
+    if(diff_mins == 0):
+        py_start_datetime = last_start.modificationDate().toPyDateTime()
+        py_end_datetime = last_end.modificationDate().toPyDateTime()
+        diff = py_end_datetime - py_start_datetime
+        diff_mins = diff.total_seconds()/60
+
+    if(timestamp is None):
+        timestamp = datetime.today()
     
-    export_to_csv(word_count,filename,diff_mins)
+    print(export_to_csv(timestamp,word_count,filename,diff_mins))
     return word_count
 # / word counter
     
         
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])
