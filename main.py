@@ -58,13 +58,18 @@ def export_to_csv(timestamp,amount_of_words,pdffilename,mins):
     csvfilename = '/home/zelenyeshtany/r.csv'
     with open(csvfilename, 'a', newline='') as csvfile:
         writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL, lineterminator='\n')
-        row = [timestamp.strftime('%Y-%m-%d %H:%M'), amount_of_words,int(mins),pdffilename]
+        row = [timestamp.strftime('%Y-%m-%d %H:%M'),
+               amount_of_words,
+               int(mins),
+               round(amount_of_words/int(mins),2),
+               pdffilename]
         writer.writerow(row)
     report = ('wrote to file ' + '"' + csvfilename +
               '" :\ntimestamp:\t\t' + str(row[0]) +
               '\namount of words:\t' + str(row[1]) +
               '\nminutes spent:\t\t' + str(row[2]) +
-              '\nfile:\t\t\t' + str(row[3]))    
+              '\nwords per minute:\t' + str(row[3]) + 
+              '\nfile:\t\t\t' + str(row[4]))
     return report
 
 # returns TextBox object and its index within TextList
