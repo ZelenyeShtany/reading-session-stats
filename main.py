@@ -54,22 +54,29 @@ def count_words_between_annotations(annot1,annot2,
     #print(PyQt5.QtCore.QLocale.system().toString(last_start.modificationDate(),'yyyy-MM-dd HH:mm')) # raboraet = today,'yyyy-MM-dd HH:mm'
 
 
-def export_to_csv(timestamp,amount_of_words,pdffilename,mins):
-    csvfilename = '/home/zelenyeshtany/r.csv'
-    with open(csvfilename, 'a', newline='') as csvfile:
+def export_to_csv(rows,csvfilename,exported_data_path):
+    column_names = ['timestamp',
+                    'amount_of_words',
+                    'minutes spent',
+                    'reading speed(words/minute)',
+                    'start annotation position',
+                    'end annotation position']
+    try:
+        csvfile = open(csvfilename, 'a', newline='')
+    except:
+        if not os.path.exists(exported_data_path):
+            os.makedirs(exported_data_path)
+        csvfile = open(csvfilename, 'w', newline='')
+    if os.stat(csvfilename).st_size == 0: # if file is empty
         writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL, lineterminator='\n')
-        row = [timestamp.strftime('%Y-%m-%d %H:%M'),
-               amount_of_words,
-               int(mins),
-               round(amount_of_words/int(mins),2),
-               pdffilename]
-        writer.writerow(row)
-    report = ('wrote to file ' + '"' + csvfilename +
-              '" :\ntimestamp:\t\t' + str(row[0]) +
-              '\namount of words:\t' + str(row[1]) +
-              '\nminutes spent:\t\t' + str(row[2]) +
-              '\nwords per minute:\t' + str(row[3]) + 
-              '\nfile:\t\t\t' + str(row[4]))
+        writer.writerow(column_names)
+        csvfile.close()
+    csvfile = open(csvfilename, 'a', newline='')
+    
+    writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL, lineterminator='\n')
+
+    writer.writerows(rows) # writerows
+    report = 'wrote to file ' + '"' + csvfilename + '" ' + str(len(rows)) + ' rows'
     return report
 
 # returns TextBox object and its index within TextList
@@ -193,14 +200,27 @@ def highlight_amender(all_annots,page_numbers,document):
 
 def main(argv):
     all_annots = [] # all 'start' and 'end' annotations (which contents is either 'start' or 'end')
+    all_ends = []
+    all_starts = []
     page_numbers = [] # all_annots[5] returns HighlightAnnotation object and page_numbers[5] returns number of page in which this annotations resides
+    end_page_numbers = []
+    start_page_numbers = []
+
     
-# params
+    #DEFAULTS
+    archive_mode = True
     diff_mins = 0 # amount of time spent to reading
     timestamp = None # time when you was reading
-    filepath = None # path to pdf file
+    booksfolder = '/home/zelenyeshtany/Books'
+    pdffilename = '/10StepstoEarningAwesomeGrades.pdf'
+    exported_data_path = '/home/zelenyeshtany/Sync/tables/reading-session-stats-data/books'
+    csvfilename = exported_data_path + re.search('(.+?)(\.pdf)',pdffilename).group(1) + '.csv'
+    
+    #/DEFAULTS
+    
+    #OPTIONS
     try:
-        opts, args = getopt.getopt(argv,"hf:m:t:",["filepath","help","mins=","timestamp="])
+        opts, args = getopt.getopt(argv,"A:hf:m:t:",["archive-off","pdffilename=","help","mins=","timestamp="])
     except getopt.GetoptError:
         print('test.py -i <inputfile> -o <outputfile>')
         sys.exit(2)
@@ -208,7 +228,8 @@ def main(argv):
         if opt in ("-h","--help"):
             print('usage: ' + os.path.basename(__file__)+' [OPTIONS]')
             print('OPTIONS:')
-            print('-f, --filepath\tpath to pdf file to open')
+            print('-f, --pdffilename\tpdf file name to open')
+            print('-A, --archive-off\tturns off archive mode and tries to export all the data from given file')
             print('-h, --help\treturns help info')
             print('-m, --mins\tspecifies amount of time spent to reading (in minutes).')
             print('\t\tDefault: last_start_annot.lastModifiedTime() - last_end_annot.lastModifiedTime()')
@@ -216,23 +237,24 @@ def main(argv):
             sys.exit()
         elif opt in ("-t", "--timestamp"):
             timestamp = arg
+        elif opt in ("-A", "--archive-off"):
+            archive_mode = False
+            
         elif opt in ("-m", "--mins"):
             diff_mins = arg
-        elif opt in ("-f", "--filepath"):
-            filepath = arg
+        elif opt in ("-f", "--pdffilename"):
+            pdffilename = arg
+    #/OPTIONS
 
-    if(filepath is None):
-        filepath = "/home/zelenyeshtany/Books/10StepstoEarningAwesomeGrades.pdf"
-    filename = filepath.split('/')[-1]
 
-#/params
     
-    doc = popplerqt5.Poppler.Document.load(filepath)
+    doc = popplerqt5.Poppler.Document.load(booksfolder + pdffilename)
     if(doc is None):
          print('Document not found')
          return 'Document not found'
-    starts_counter = 0
-    ends_counter = 0
+    starts_counter = 0 # how many 'start' annotations exist in this file
+    ends_counter = 0 # how many 'end' annotations exist in this file
+    # start/end count
     for i in range(doc.numPages()):
         page = doc.page(i)
         (pwidth, pheight) = (page.pageSize().width(), page.pageSize().height())
@@ -243,46 +265,116 @@ def main(argv):
                    and
                    (annotation.contents() == 'start'
                     or
-                    annotation.contents() == 'end')
-                   ):
-                    if(annotation.contents() == 'end'):
+                    re.search('(end)([ ]+\d+)?',annotation.contents())
+                   )):
+                    if 'end' in (annotation.contents()):
                         ends_counter+=1
+                        all_ends.append(annotation)
+                        end_page_numbers.append(i)
                     else:
                         starts_counter+=1
+                        all_starts.append(annotation)
+                        start_page_numbers.append(i)
                     all_annots.append(annotation)
                     page_numbers.append(i)
+    print(len(all_annots))
+    print(len(all_ends))
+    print(len(all_starts))
+    #/ start/end count
+
+    # cheching for errors
     if(starts_counter!=ends_counter):
         print('Error: "start" annotations:'+str(starts_counter)+', "end" annotations:'+str(ends_counter))
         if(starts_counter>ends_counter):
             print('Add another "end" annotation after last "start" annotation')
         else:
             print('Add another "start" annotation before last "end" annotation')
-    
-    # word counter
-    last_start_page_number = page_numbers[len(all_annots)-2]
-    last_end_page_number = page_numbers[len(all_annots)-1]
-    last_start = all_annots[len(all_annots)-2]
-    last_end = all_annots[len(all_annots)-1]
-    word_count = count_words_between_annotations(last_start,
-                                    last_end,
-                                    doc,
-                                    last_start_page_number,
-                                    last_end_page_number
-                                    )
+    # /cheching for errors
+
+    # import all the data from csv file
+    datafromcsvfile = []
+    try:
+        csvfile = open(csvfilename, 'r')
+    except:
+        if not os.path.exists(exported_data_path):
+            os.makedirs(exported_data_path)
+        csvfile = open(csvfilename, 'w')
+        csvfile.close()
+        csvfile = open(csvfilename, 'r')
+    csvreader = csv.reader(csvfile, quoting=csv.QUOTE_ALL, lineterminator='\n')
+    rowiter = 0
+    for row in csvreader:
+        if rowiter==0: # skip the first row which contains column names
+            rowiter+=1
+            continue
+        datafromcsvfile.append([row[4], # start anniotation position(page and coords within this page)
+                                row[5]])# end anniotation position(page and coords within this page)
+        rowiter+=1
+    csvfile.close()
+    # /import all the data from csv file
 
 
-    if(diff_mins == 0):
-        py_start_datetime = last_start.modificationDate().toPyDateTime()
-        py_end_datetime = last_end.modificationDate().toPyDateTime()
-        diff = py_end_datetime - py_start_datetime
-        diff_mins = diff.total_seconds()/60
+    # append to  rowstoexport only those rows that havent been exported to csv file
+    rowstoexport = []
+    for i in range(len(all_starts)): # or all_ends, not a big deal
+        end_page = doc.page(end_page_numbers[i])
+        end_page_width = end_page.pageSize().width()
+        end_page_height = end_page.pageSize().height()
+        not_found = 1
 
-    if(timestamp is None):
-        timestamp = datetime.today()
-    
-    print(export_to_csv(timestamp,word_count,filename,diff_mins))
-    return word_count
-# / word counter
+        # specifying timestamp (first column in the csv file)
+        timestamp = all_starts[i].modificationDate().toPyDateTime()
+        for j in range(len(datafromcsvfile)):
+            if(str(end_page_numbers[i]) ==
+               datafromcsvfile[j][1].split(':')[0]
+               and
+               str(round(annot_get_x(all_ends[i],end_page_width),3)) == datafromcsvfile[j][1].split(':')[1] # float or int
+               and
+               str(round(annot_get_y(all_ends[i],end_page_height),3)) == datafromcsvfile[j][1].split(':')[2] # float or int
+               ):
+                not_found = 0
+                break
+        if not_found:
+            # specifying reading session duration
+            if(diff_mins == 0):
+                if len(all_ends[i].contents().split(' ')) == 2:
+                    diff_mins = int(all_ends[i].contents().split(' ')[1])
+                else:
+                    diff_mins = 0
+            # /specifying reading session duration
+
+            word_count = count_words_between_annotations(
+                all_starts[i],
+                all_ends[i],
+                doc,
+                end_page_numbers[i],
+                start_page_numbers[i]
+            )
+
+            if int(diff_mins):
+                reading_speed = round(word_count/int(diff_mins),2)
+            else:
+                reading_speed = word_count
+
+            start_page = doc.page(start_page_numbers[i])
+            start_page_width = start_page.pageSize().width()
+            start_page_height = start_page.pageSize().height()
+            
+            start_position = str(start_page_numbers[i]) + ':' + str(round(annot_get_x(all_starts[i],start_page_width),3)) + ':' + str(round(annot_get_y(all_starts[i],start_page_height),3))
+            end_position = str(end_page_numbers[i]) + ':' + str(round(annot_get_x(all_ends[i],end_page_width),3)) + ':' + str(round(annot_get_y(all_ends[i],end_page_height),3))
+            
+            row = [timestamp.strftime('%Y-%m-%d %H:%M'),
+                word_count,
+                diff_mins,
+                reading_speed,
+                start_position,
+                end_position]
+            rowstoexport.append(row)
+            
+    # /append to  rowstoexport only those rows that havent been exported to csv file
+                   
+    print(export_to_csv(rowstoexport,csvfilename,exported_data_path))
+    return 1
     
         
 if __name__ == "__main__":
