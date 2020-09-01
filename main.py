@@ -8,6 +8,12 @@ from datetime import datetime,date
 import getopt
 import os
 
+if sys.platform != 'linux':
+    datafolder = 'D:'
+else:
+    datafolder = '/data'
+        
+
 def count_words_between_annotations(annot1,annot2,
                                     doc,annot1_page_number,
                                     annot2_page_number):
@@ -199,7 +205,7 @@ def highlight_amender(all_annots,page_numbers,document):
             print(my_annot_get_text(all_annots[i],cur_page))
              # setboundary принимает QRectF с нормированными коордами
     converter = document.pdfConverter()
-    converter.setOutputFileName("/home/zelenyeshtany/10.pdf")
+    converter.setOutputFileName(datafolder + "10.pdf")
     converter.setPDFOptions(popplerqt5.Poppler.PDFConverter.WithChanges) # save with changes (enumerator)
     converter.convert()    
     
@@ -211,9 +217,9 @@ def main(argv):
     archive_mode = True
     diff_mins = 0 # amount of time spent to reading
     timestamp = None # time when you was reading
-    booksfolder = '/home/zelenyeshtany/Books'
-    pdffilenames = ['/10StepstoEarningAwesomeGrades.pdf','/Metascript-Method-v1.pdf']
-    exported_data_path = '/home/zelenyeshtany/Sync/tables/reading-session-stats-data/books'
+    booksfolder = datafolder + '/Books'
+    pdffilenames = ['/10StepstoEarningAwesomeGrades.pdf','/Metascript-Method-v1.pdf','/Deep Work(highlighted).pdf']
+    exported_data_path = datafolder + '/Sync/tables/reading-session-stats-data/books'
     #/DEFAULTS
     
     #OPTIONS
@@ -262,6 +268,9 @@ def main(argv):
         for i in range(doc.numPages()):
             page = doc.page(i)
             (pwidth, pheight) = (page.pageSize().width(), page.pageSize().height())
+            # когд-нибудь...
+            #    set = {popplerqt5.Poppler.HighlightAnnotation}
+            #    annotations = page.annotations(set)
             annotations = page.annotations()
             if len(annotations) > 0:
                 for annotation in annotations:
