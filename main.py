@@ -65,8 +65,8 @@ def export_to_csv(rows,csvfilename,exported_data_path):
                     'amount_of_words',
                     'minutes spent',
                     'reading speed(words/minute)',
-                    'start annotation position',
-                    'end annotation position']
+                    'start annotation position(page x y)',
+                    'end annotation position(page x y)']
     try:
         csvfile = open(csvfilename, 'a', newline='')
     except:
@@ -215,7 +215,6 @@ def main(argv):
     
     #DEFAULTS
     archive_mode = True
-    diff_mins = 0 # amount of time spent to reading
     timestamp = None # time when you was reading
     booksfolder = datafolder + '/Books'
     pdffilenames = ['/10StepstoEarningAwesomeGrades.pdf','/Metascript-Method-v1.pdf','/Deep Work(highlighted).pdf']
@@ -224,7 +223,7 @@ def main(argv):
     
     #OPTIONS
     try:
-        opts, args = getopt.getopt(argv,"A:hf:m:t:",["archive-off","help","mins=","timestamp="])
+        opts, args = getopt.getopt(argv,"A:hf:m:t:",["archive-off","help","timestamp="])
     except getopt.GetoptError:
         print('error, see --help')
         sys.exit(2)
@@ -234,7 +233,6 @@ def main(argv):
             print('OPTIONS:')
             print('-A, --archive-off\tturns off archive mode and tries to export all the data from given file')
             print('-h, --help\treturns help info')
-            print('-m, --mins\tspecifies amount of time spent to reading (in minutes).')
             print('\t\tDefault: last_start_annot.lastModifiedTime() - last_end_annot.lastModifiedTime()')
             print('-t, --timestamp\tSpecifies time when you was reading')
             sys.exit()
@@ -242,8 +240,6 @@ def main(argv):
             timestamp = arg
         elif opt in ("-A", "--archive-off"):
             archive_mode = False
-        elif opt in ("-m", "--mins"):
-            diff_mins = arg
     #/OPTIONS
 
 
@@ -291,7 +287,15 @@ def main(argv):
                         all_annots.append(annotation)
                         page_numbers.append(i)
         #/ start/end count
-    
+
+        # debug
+        # # for i in range(len(all_annots)):
+        # #     print(all_annots[i].contents() + ' ' + my_annot_get_text(all_annots[i],doc.page(page_numbers[i])))
+        for i in range(len(all_starts)):
+            print(my_annot_get_text(all_starts[i],doc.page(page_numbers[i])) + ' : ' + my_annot_get_text(all_ends[i],doc.page(page_numbers[i])))
+        # /debug
+
+        
         # cheching for errors
         if(starts_counter!=ends_counter):
             print('Error: "start" annotations:'+str(starts_counter)+', "end" annotations:'+str(ends_counter))
@@ -335,20 +339,22 @@ def main(argv):
             timestamp = all_starts[i].modificationDate().toPyDateTime()
             for j in range(len(datafromcsvfile)):
                 if(str(end_page_numbers[i]) ==
-                   datafromcsvfile[j][1].split(':')[0]
+                   datafromcsvfile[j][1].split(' ')[0]
                    and
-                   str(round(annot_get_x(all_ends[i],end_page_width),3)) == datafromcsvfile[j][1].split(':')[1] # float or int
+                   str(round(annot_get_x(all_ends[i],end_page_width),3)) == datafromcsvfile[j][1].split(' ')[1] # float or int
                    and
-                   str(round(annot_get_y(all_ends[i],end_page_height),3)) == datafromcsvfile[j][1].split(':')[2] # float or int
+                   str(round(annot_get_y(all_ends[i],end_page_height),3)) == datafromcsvfile[j][1].split(' ')[2] # float or int
                    ):
                     not_found = 0
                     break
             if not_found:
                 # specifying reading session duration
-                if(diff_mins == 0):
-                    if len(all_ends[i].contents().split(' ')) == 2:
-                        diff_mins = int(all_ends[i].contents().split(' ')[1])
-                    else:
+                if len(all_ends[i].contents().split(' ')) == 2:
+                    diff_mins = int(all_ends[i].contents().split(' ')[1])
+                else:
+                    time = all_ends[i].modificationDate().toPyDateTime() - all_starts[i].modificationDate().toPyDateTime()
+                    diff_mins = time.total_seconds()/60
+                    if diff_mins<0:
                         diff_mins = 0
                 # /specifying reading session duration
     
@@ -369,8 +375,8 @@ def main(argv):
                 start_page_width = start_page.pageSize().width()
                 start_page_height = start_page.pageSize().height()
                 
-                start_position = str(start_page_numbers[i]) + ':' + str(round(annot_get_x(all_starts[i],start_page_width),3)) + ':' + str(round(annot_get_y(all_starts[i],start_page_height),3))
-                end_position = str(end_page_numbers[i]) + ':' + str(round(annot_get_x(all_ends[i],end_page_width),3)) + ':' + str(round(annot_get_y(all_ends[i],end_page_height),3))
+                start_position = str(start_page_numbers[i]) + ' ' + str(round(annot_get_x(all_starts[i],start_page_width),3)) + ' ' + str(round(annot_get_y(all_starts[i],start_page_height),3))
+                end_position = str(end_page_numbers[i]) + ' ' + str(round(annot_get_x(all_ends[i],end_page_width),3)) + ' ' + str(round(annot_get_y(all_ends[i],end_page_height),3))
                 
                 row = [timestamp.strftime('%Y-%m-%d %H:%M'),
                     word_count,
